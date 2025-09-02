@@ -3,6 +3,11 @@ import React, {useEffect, useState} from "react";
 import Image from "next/image";
 import data from './components/data.json'
 import { ScrollArea } from "@/components/ui/scroll-area"
+import CircleModal from "./components/circle-modal";
+import { useSelector, useDispatch} from 'react-redux'
+import { RootState } from './store'
+import Login from "./components/login";
+import { hideAuthModals, showLoginOnly, showRegisterOnly } from "./features/auth/slice";
 
 interface cartType {
   name: string;
@@ -32,9 +37,17 @@ const [showQuantity, setShowQuantity] =useState<string[]>([]);
 const [count,setCount] = useState<{[key:string]: number}>({})
 const [cart, setCart] = useState<cartType[]>([])
 const [showOrder,setShowOrder] = useState(false)
+const isAuthenticated = useSelector((state:RootState)=>state.auth.isAuthenticated)
+const dispatch = useDispatch()
+const showLogin = useSelector((state:RootState)=>state.auth.showLogin)
+
 
 const handleCart = (menu:menuType)=>{
   
+      if (!isAuthenticated) {
+        dispatch(showLoginOnly())
+        return;
+      }
 
       setShowQuantity(prev=> prev.includes(menu.category) ? prev: [...prev,menu.category])
 
@@ -55,6 +68,9 @@ const handleCart = (menu:menuType)=>{
       
         const handleRemove = (menu: cartType)=>{
             setCart(cart=>cart.filter(item=>item.category !== menu.category))
+            setCount(prev=>({
+              ...prev, [menu.category]: Math.max((prev[menu.category] || 0) - 1, 0)
+            }))
       }
      
 
@@ -94,7 +110,7 @@ const handlenewOrder = ()=>{
   setCount({})
 }
   return (
-    <div className="w-full bg-amber-50 h-screen px-2 md:px-8 py-4 ">
+    <div className="w-full bg-amber-50 min-h-screen px-2 md:px-8 py-4 ">
       <main className="flex flex-col md:flex-row items-start py-2 md:py-4">
           <div className="w-full md:w-4/5 px-2 md:px-16 relative">
 
@@ -176,11 +192,11 @@ const handlenewOrder = ()=>{
 
                           <div className="flex flex-row items-center justify-between my-2">
                               <p className="text-xs">Order Total:</p>
-                              <h1 className="font-bold text-md">{cart.reduce((sum,i)=>sum + i.price* i.quantity,0).toFixed(2)}</h1>
+                              <h1 className="font-bold text-md">${cart.reduce((sum,i)=>sum + i.price* i.quantity,0).toFixed(2)}</h1>
                           </div>
 
                           <div className="w-full my-2">
-                            <button className="w-full bg-amber-800 text-amber-50 py-2 px-3 rounded-full text-sm"
+                            <button className="w-full bg-amber-800 text-amber-50 py-2 px-3 rounded-full text-sm cursor-pointer"
                             onClick={()=>setShowOrder(true)} type="submit">Confirm Order</button>
                           </div>
 
@@ -197,80 +213,79 @@ const handlenewOrder = ()=>{
                   )}
               </div>
 
-              {showOrder && (
-                <>
-                  <div className="fixed inset-0" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}></div>
-
-                      <div className={`fixed inset-0 md:inset-0 flex items-end md:items-center md:justify-center
-                       z-50 transition-transform ease-in duration-700 ${showOrder? 'translate-y-0' : 'translate-y-full'} md:transform-none`}>
-                        <div className="rounded-lg bg-white w-full md:w-auto px-8 py-8 md:py-4 ">
-      
-                        <div className="flex flex-col gap-2">
-
-                          <div className="flex items-center justify-between ">
-                            <img src="/assets/images/icon-order-confirmed.svg" alt="" className="h-10 w-10" />
-                            <img src="/assets/images/icon-remove-item.svg" alt="" onClick={()=>setShowOrder(false)}
-                          className="cursor-pointer h-7 w-7 border border-amber-700 rounded-full p-1" />
-                          </div>
-
-                          <h1 className="text-xl font-bold">Order Confirmed</h1>
-                          <p className="text-sm text-amber-900">We hope you enjoy your food</p>
-                        </div>
-
-                        <ScrollArea className="h-[250px] md:h-[200px] mt-6">
-
-
-                        <div className="bg-gray-50 p-2 rounded-lg">
-                        {cart.map((item,i)=>(
-                          <React.Fragment key={i}>        
-                            <div className="flex flex-col my-4 " >
-                                <div className="flex flex-row items-center justify-between">
-                                  
-                                <div className="flex flex-row items-center gap-2">
-                                   <div className="w-12">
-                                      <Image alt="" src={item.image.desktop} height={20} width={20} className="w-full"/>
-                                  </div>
-
-                                  <div className="flex flex-col gap-1">
-                                      <h1 className="text-sm font-bold">{item.name}</h1>
-
-                                      <div className="flex flex-row items-center gap-3">
-                                          <p className="text-xs font-bold">
-                                            {item.quantity} <span className="text-amber-600">x</span>
-                                          </p>
-
-                                          <h4 className="flex flex-row gap-3 text-sm">
-                                            <span className="text-xs text-amber-900 flex flex-row items-center ">@ ${item.price.toFixed(2)}</span> 
-                                          </h4>
-                                      </div>
-                                  </div>
-                                </div>
-
-                                  <span className="font-semibold">${(item.price * item.quantity).toFixed(2)} </span>
-                                </div>
-                            </div>
-                          </React.Fragment>
-                        
-                          ))}
-                        </div>
-                      </ScrollArea>
-
-
-                        <div className="flex flex-row items-center justify-between my-2">
-                              <p className="text-xs">Order Total:</p>
-                              <h1 className="font-bold text-md">${cart.reduce((sum,i)=>sum + i.price* i.quantity,0).toFixed(2)}</h1>
-                          </div>
-
-                        <div className="w-full my-2">
-                            <button className="w-full bg-amber-800 text-amber-50 py-2 px-3 rounded-full text-sm"
-                            onClick={handlenewOrder} type="submit">Start new Order</button>
-                        </div>                        
-                      </div>  
-
+              { showLogin && 
+               <CircleModal showModal={showLogin} cancelModal={()=>dispatch(hideAuthModals())}>
+                    <div>
+                        <Login />
                     </div>
-                  </>
-              )}
+                </CircleModal>
+        }
 
+              {showOrder && (
+                  <CircleModal showModal={showOrder} cancelModal={()=>setShowOrder(false)}
+                       children={
+                        <div>
+                           <div className="flex flex-col gap-2">
+                              <div className="flex items-center ">
+                                <img src="/assets/images/icon-order-confirmed.svg" alt="" className="h-10 w-10" />
+                                {/* <img src="/assets/images/icon-remove-item.svg" alt="" onClick={()=>setShowOrder(false)}
+                                className="cursor-pointer h-7 w-7 border border-amber-700 rounded-full p-1" /> */}
+                              </div>
+
+                                <h1 className="text-xl font-bold">Order Confirmed</h1>
+                                <p className="text-sm text-amber-900">We hope you enjoy your food</p>
+                              </div>
+
+                              <ScrollArea className="h-[250px] md:h-[200px] mt-6">
+
+                              <div className="bg-gray-50 p-2 rounded-lg w-full md:w-[300px]">
+                              {cart.map((item,i)=>(
+                              <React.Fragment key={i}>        
+                                <div className="flex flex-col my-4 w-full " >
+                                    <div className="w-full flex flex-row items-center justify-between">
+                                      
+                                    <div className="flex flex-row items-center gap-2">
+                                      <div className="w-12">
+                                          <Image alt="" src={item.image.desktop} height={20} width={20} className="w-full"/>
+                                    </div>
+
+                                    <div className="flex flex-col gap-1">
+                                          <h1 className="text-sm font-bold">{item.name}</h1>
+
+                                          <div className="flex flex-row items-center gap-3">
+                                              <p className="text-xs font-bold">
+                                                {item.quantity} <span className="text-amber-600">x</span>
+                                              </p>
+
+                                              <h4 className="flex flex-row gap-3 text-sm">
+                                                <span className="text-xs text-amber-900 flex flex-row items-center ">@ ${item.price.toFixed(2)}</span> 
+                                              </h4>
+                                          </div>
+                                    </div>
+                                  </div>
+
+                                      <span className="font-semibold">${(item.price * item.quantity).toFixed(2)} </span>
+                                    </div>
+                                </div>
+                              </React.Fragment>
+
+                              ))}
+                              </div>
+                              </ScrollArea>
+
+
+                              <div className="flex flex-row items-center justify-between my-2">
+                                  <p className="text-xs">Order Total:</p>
+                                  <h1 className="font-bold text-md">${cart.reduce((sum,i)=>sum + i.price* i.quantity,0).toFixed(2)}</h1>
+                              </div>
+
+                              <div className="w-full my-2">
+                                <button className="w-full bg-amber-800 text-amber-50 py-2 px-3 rounded-full text-sm cursor-pointer"
+                                onClick={handlenewOrder} type="submit">Start new Order</button>
+                              </div>
+                        </div>}
+                         />                                             
+              )}
               
           </div>
       </main>
